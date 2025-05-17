@@ -3,9 +3,28 @@ import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { WinstonModule } from 'nest-winston';
+import * as winston from "winston"
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const logger = WinstonModule.createLogger({
+    transports: [
+      new winston.transports.Console({
+        format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+      }),
+      new winston.transports.File({
+        filename: "logs/error.log",
+        level: "error",
+        format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+      }),
+      new winston.transports.File({
+        filename: "logs/combined.log",
+        format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+      }),
+    ],
+  })
+
+  const app = await NestFactory.create(AppModule, { logger });
 
   app.enableCors()
   app.use(helmet())
