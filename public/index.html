@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Employee Hierarchy</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    .employee-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .loading { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container mt-5">
+    <h1 class="mb-4">Employee Hierarchy Viewer</h1>
+
+    <!-- Login -->
+    <div id="loginSection" class="card mb-4">
+      <div class="card-header"><h5>Login</h5></div>
+      <div class="card-body">
+        <form id="loginForm">
+          <input type="text" class="form-control mb-2" id="username" placeholder="Username" value="admin" required />
+          <input type="password" class="form-control mb-3" id="password" placeholder="Password" value="admin" required />
+          <button class="btn btn-primary w-100">Login</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Token Info -->
+    <div id="tokenSection" class="card mb-4 d-none">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5>Authentication Token</h5>
+        <button id="logoutBtn" class="btn btn-sm btn-outline-danger">Logout</button>
+      </div>
+      <div class="card-body alert alert-success mb-0">Logged in successfully!</div>
+    </div>
+
+    <!-- Manager Select -->
+    <div id="employeeSelector" class="card mb-4 d-none">
+      <div class="card-header"><h5>Select Manager</h5></div>
+      <div class="card-body">
+        <select id="managerId" class="form-select mb-3">
+          <option value="" disabled selected>Select a manager</option>
+        </select>
+        <button id="viewHierarchyBtn" class="btn btn-primary">View Hierarchy</button>
+      </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading" class="text-center loading">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2">Loading data...</p>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="card d-none">
+      <div class="card-header"><h5>Employee Hierarchy</h5></div>
+      <div class="card-body">
+        <div id="employeeList" class="row"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3000/api/v1';
+    const $ = id => document.getElementById(id);
+    const state = { token: '', employees: [] };
+
+    // Event Listeners
+    $('loginForm').addEventListener('submit', login);
+    $('logoutBtn').addEventListener('click', logout);
+    $('viewHierarchyBtn').addEventListener('click', loadHierarchy);
+
+    // Init
+    (() => {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        state.token = token;
+        updateUI(true);
+        fetchEmployees();
+      }
+    })();
+
+    async function login(e) {
+      e.preventDefault();
+      showLoading();
+      try {
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: $('username').value, password: $('password').value })
+        });
+        if (!res.ok) throw new Error('Login failed');
+        const data = await res.json();
+        state.token = data.access_token;
+        localStorage.setItem('authToken', state.token);
+        updateUI(true);
+        fetchEmployees();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function logout() {
+      state.token = '';
+      localStorage.removeItem('authToken');
+      updateUI(false);
+    }
+
+    function updateUI(authenticated) {
+      $('loginSection').classList.toggle('d-none', authenticated);
+      $('tokenSection').classList.toggle('d-none', !authenticated);
+      $('employeeSelector').classList.toggle('d-none', !authenticated);
+      $('results').classList.add('d-none');
+    }
+
+    async function fetchEmployees() {
+      showLoading();
+      try {
+        const res = await fetch(`${API_URL}/employees`);
+        if (!res.ok) throw new Error('Failed to fetch employees');
+        state.employees = await res.json();
+        $('managerId').innerHTML = `<option value="" disabled selected>Select a manager</option>` +
+          state.employees.map(emp => `<option value="${emp.id}">${emp.name} (${emp.position})</option>`).join('');
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function loadHierarchy() {
+      const id = $('managerId').value;
+      if (!id) return alert('Select a manager first.');
+      showLoading(); $('results').classList.add('d-none');
+      try {
+        const res = await fetch(`${API_URL}/employees/${id}/hierarchy`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch hierarchy');
+        const data = await res.json();
+        renderHierarchy(data);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function renderHierarchy(list) {
+      const container = $('employeeList');
+      container.innerHTML = list.length === 0
+        ? `<div class="col-12 alert alert-info">No employees in this hierarchy.</div>`
+        : list.map(emp => `
+          <div class="col-md-4 mb-3">
+            <div class="card employee-card h-100">
+              <div class="card-body">
+                <h5 class="card-title">${emp.name}</h5>
+                <h6 class="card-subtitle text-muted">${emp.position}</h6>
+                <p class="card-text">ID: ${emp.id}</p>
+                <p class="card-text">Reports to: ${emp.managerId || 'None (Top Level)'}</p>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      $('results').classList.remove('d-none');
+    }
+
+    function showLoading() { $('loading').style.display = 'block'; }
+    function hideLoading() { $('loading').style.display = 'none'; }
+  </script>
+</body>
+</html>
