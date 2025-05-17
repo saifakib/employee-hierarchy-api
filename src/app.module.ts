@@ -5,7 +5,6 @@ import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { Employee } from './employee/models/employee.model';
 import { EmployeeModule } from './employee/employee.module';
 
 @Module({

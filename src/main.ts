@@ -5,6 +5,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { WinstonModule } from 'nest-winston';
 import * as winston from "winston"
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 async function bootstrap() {
   const logger = WinstonModule.createLogger({
@@ -24,7 +26,11 @@ async function bootstrap() {
     ],
   })
 
-  const app = await NestFactory.create(AppModule, { logger });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger });
+  app.useStaticAssets(join(__dirname, '..', 'public'), {
+  index: false,
+  prefix: '/',
+});
 
   app.enableCors()
   app.use(helmet())

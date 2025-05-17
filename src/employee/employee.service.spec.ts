@@ -66,11 +66,10 @@ describe("EmployeeService", () => {
   })
 
   describe("findHierarchy", () => {
-    it("should return all subordinates for a given manager ID", async () => {
-      // Mock implementation for findAllSubordinates
+    it("should return all subordinates for a position manager ID", async () => {
       jest.spyOn(service as any, "findAllSubordinates").mockResolvedValueOnce([
-        mockEmployees[1], // Jane Doe (direct report)
-        mockEmployees[2], // Bob Johnson (indirect report)
+        mockEmployees[1],
+        mockEmployees[2],
       ])
 
       const result = await service.findHierarchy(1)
