@@ -19,4 +19,14 @@ export class EmployeeRepository {
     this.logger.log("Finding all employees")
     return this.employees
   }
+
+    async findById(id: number): Promise<Employee | undefined> {
+    this.logger.log(`Finding employee with id: ${id}`)
+    return this.employees.find((employee) => employee.id === id)
+  }
+
+  async findByManagerId(managerId: number): Promise<Employee[]> {
+    this.logger.log(`Finding employees with managerId: ${managerId}`)
+    return this.employees.filter((employee) => employee.managerId === managerId)
+  }
 }
